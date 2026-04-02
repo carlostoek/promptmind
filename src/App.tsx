@@ -3,7 +3,6 @@
 // ============================================================================
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePromptStore } from '@/store/promptStore';
 import { Header } from '@/components/Header';
 import { SearchFilter } from '@/components/SearchFilter';
@@ -237,33 +236,25 @@ function App() {
 
         {/* Prompts List */}
         <div className="space-y-4">
-          <AnimatePresence mode="popLayout">
-            {filteredPrompts.length > 0 ? (
-              filteredPrompts.map((prompt, index) => (
-                <motion.div
-                  key={prompt.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <PromptCard
-                    prompt={prompt}
-                    onCopy={handleCopy}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    score={(prompt as ScoredPrompt).score}
-                  />
-                </motion.div>
-              ))
-            ) : (
-              <EmptyState
-                onCreate={() => setIsModalOpen(true)}
-                hasFilters={hasFilters}
-                onClearFilters={hasFilters ? clearFilters : undefined}
+          {filteredPrompts.length > 0 ? (
+            filteredPrompts.map((prompt) => (
+              <PromptCard
+                key={prompt.id}
+                prompt={prompt}
+                onCopy={handleCopy}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onTagClick={handleTagToggle}
+                score={(prompt as ScoredPrompt).score}
               />
-            )}
-          </AnimatePresence>
+            ))
+          ) : (
+            <EmptyState
+              onCreate={() => setIsModalOpen(true)}
+              hasFilters={hasFilters}
+              onClearFilters={hasFilters ? clearFilters : undefined}
+            />
+          )}
         </div>
       </main>
 

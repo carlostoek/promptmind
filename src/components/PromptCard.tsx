@@ -2,8 +2,8 @@
 // PROMPT CARD COMPONENT
 // ============================================================================
 
-import { motion } from 'framer-motion';
-import { Copy, Edit2, Trash2, Sparkles, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { Copy, Edit2, Trash2, Sparkles, TrendingUp, Expand, Minimize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,23 +16,26 @@ interface PromptCardProps {
   onCopy: (id: string) => void;
   onEdit: (prompt: Prompt) => void;
   onDelete: (id: string) => void;
+  onTagClick?: (tag: string) => void;
   score?: number;
 }
 
-export function PromptCard({ prompt, onCopy, onEdit, onDelete, score }: PromptCardProps) {
+export function PromptCard({ prompt, onCopy, onEdit, onDelete, onTagClick, score }: PromptCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const type = prompt.metadata?.type || 'uncategorized';
   const colors = TYPE_COLORS[type as PromptType];
   const icon = TYPE_ICONS[type as PromptType];
   const confidenceLevel = getConfidenceLevel(prompt.metadata?.confidence || 0);
 
+  const handleTagClick = (e: React.MouseEvent, tag: string) => {
+    e.stopPropagation();
+    onTagClick?.(tag);
+  };
+
+  const isLongContent = prompt.content.length > 150;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.2 }}
-    >
+    <div className="transition-all duration-200 hover:scale-[1.01]">
       <Card className="group relative overflow-hidden bg-zinc-900/80 border-zinc-800 hover:border-zinc-700 transition-all">
         {/* Confidence Indicator */}
         <div className={`absolute top-0 left-0 w-1 h-full ${
@@ -98,23 +101,51 @@ export function PromptCard({ prompt, onCopy, onEdit, onDelete, score }: PromptCa
             </p>
           )}
 
-          {/* Content Preview */}
-          <div className="bg-zinc-950/50 rounded-lg p-3 mb-3">
-            <p className="text-sm text-zinc-300 line-clamp-3 font-mono">
-              {prompt.content}
-            </p>
+          {/* Content Preview - Expandable */}
+          <div
+            className={`bg-zinc-950/50 rounded-lg p-3 mb-3 relative group/content transition-all ${
+              isExpanded ? 'max-h-[400px] overflow-y-auto' : 'max-h-32'
+            }`}
+          >
+            <pre className="text-sm text-zinc-300 font-mono whitespace-pre-wrap break-words">
+              {isExpanded ? prompt.content : prompt.content.slice(0, 200)}
+              {!isExpanded && prompt.content.length > 200 && '...'}
+            </pre>
+
+            {/* Expand/Collapse Button */}
+            {isLongContent && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="absolute bottom-2 right-2 h-7 px-2 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-white opacity-0 group-hover/content:opacity-100 transition-opacity"
+              >
+                {isExpanded ? (
+                  <>
+                    <Minimize2 className="w-3 h-3 mr-1" />
+                    Collapse
+                  </>
+                ) : (
+                  <>
+                    <Expand className="w-3 h-3 mr-1" />
+                    Expand
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
-          {/* Tags */}
+          {/* Tags - Clickable */}
           {prompt.metadata?.tags && prompt.metadata.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {prompt.metadata.tags.slice(0, 4).map((tag, idx) => (
-                <span
+                <button
                   key={idx}
-                  className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-full"
+                  onClick={(e) => handleTagClick(e, tag)}
+                  className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-full hover:bg-violet-500/20 hover:text-violet-400 transition-colors cursor-pointer"
                 >
                   #{tag}
-                </span>
+                </button>
               ))}
               {prompt.metadata.tags.length > 4 && (
                 <span className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-500 rounded-full">
@@ -138,6 +169,6 @@ export function PromptCard({ prompt, onCopy, onEdit, onDelete, score }: PromptCa
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
