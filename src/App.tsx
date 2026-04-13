@@ -13,7 +13,8 @@ import { EmptyState } from '@/components/EmptyState';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { Toast } from '@/components/Toast';
 import { useToast } from '@/hooks/useToast';
-import type { Prompt, ScoredPrompt } from '@/types';
+import type { Prompt, ScoredPrompt, ExtractedData } from '@/types';
+import { extractAllWithAI } from '@/services/openrouterAI';
 import './App.css';
 
 function App() {
@@ -69,10 +70,9 @@ function App() {
   const handleCreate = useCallback(async (content: string, metadata?: any) => {
     if (!content.trim()) return;
 
-    setIsProcessing(true);
-    try {
-      if (editingPrompt) {
-        // Update existing prompt
+    if (editingPrompt) {
+      setIsProcessing(true);
+      try {
         await updatePrompt(editingPrompt.id, {
           content,
           title: metadata?.title || editingPrompt.title,
@@ -80,21 +80,56 @@ function App() {
           metadata: metadata?.metadata || editingPrompt.metadata
         });
         showToast('Prompt updated successfully!', 'success');
-      } else {
-        // Create new prompt with AI extraction
-        await addPrompt(content);
-        showToast('Prompt saved with AI metadata!', 'success');
+        setIsModalOpen(false);
+        setEditingPrompt(null);
+        setExtractedData(null);
+      } catch (error) {
+        console.error('Error saving prompt:', error);
+        showToast('Failed to save prompt', 'error');
+      } finally {
+        setIsProcessing(false);
       }
-      setIsModalOpen(false);
-      setEditingPrompt(null);
-      setExtractedData(null);
-    } catch (error) {
-      console.error('Error saving prompt:', error);
-      showToast('Failed to save prompt', 'error');
-    } finally {
-      setIsProcessing(false);
+    } else {
+      // Creating new prompt
+      if (!extractedData) {
+        // Phase 1: Extract metadata first
+        setIsProcessing(true);
+        try {
+          const data = await extractAllWithAI(content);
+          setExtractedData({
+            title: data.title,
+            description: data.description,
+            metadata: data.metadata
+          });
+        } catch (error) {
+          console.error('Extraction error:', error);
+          showToast('Failed to analyze prompt. Check your API key and connection.', 'error');
+        } finally {
+          setIsProcessing(false);
+        }
+      } else {
+        // Phase 2: Save with reviewed metadata
+        setIsProcessing(true);
+        try {
+          const finalData: ExtractedData = {
+            title: metadata?.title || extractedData.title,
+            description: metadata?.description || extractedData.description,
+            metadata: metadata?.metadata || extractedData.metadata
+          };
+          await addPrompt(content, finalData);
+          showToast('Prompt saved with AI metadata!', 'success');
+          setIsModalOpen(false);
+          setEditingPrompt(null);
+          setExtractedData(null);
+        } catch (error) {
+          console.error('Error saving prompt:', error);
+          showToast('Failed to save prompt', 'error');
+        } finally {
+          setIsProcessing(false);
+        }
+      }
     }
-  }, [editingPrompt, addPrompt, updatePrompt, showToast]);
+  }, [editingPrompt, extractedData, addPrompt, updatePrompt, showToast]);
 
   const handleEdit = useCallback((prompt: Prompt) => {
     setEditingPrompt(prompt);

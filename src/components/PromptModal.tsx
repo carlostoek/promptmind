@@ -276,12 +276,12 @@ export function PromptModal({
               {isProcessing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
+                  {extractedData ? 'Saving...' : 'Analyzing...'}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  {isEditing ? 'Save Changes' : 'Save Prompt'}
+                  {isEditing ? 'Save Changes' : (extractedData ? 'Save Prompt' : 'Analyze Prompt')}
                 </>
               )}
             </Button>

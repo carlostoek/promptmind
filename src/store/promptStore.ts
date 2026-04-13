@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Prompt, SearchFilters, ScoredPrompt } from '@/types';
+import type { Prompt, SearchFilters, ScoredPrompt, ExtractedData } from '@/types';
 import { TAG_SYNONYMS } from '@/types';
 import { extractAllWithAI, detectTypeFromContent } from '@/services/openrouterAI';
 
@@ -14,7 +14,7 @@ interface PromptState {
   error: string | null;
   
   // Actions
-  addPrompt: (content: string) => Promise<void>;
+  addPrompt: (content: string, extracted?: ExtractedData) => Promise<void>;
   updatePrompt: (id: string, updates: Partial<Prompt>) => Promise<void>;
   deletePrompt: (id: string) => Promise<void>;
   duplicatePrompt: (id: string) => Promise<void>;
@@ -117,18 +117,18 @@ export const usePromptStore = create<PromptState>()(
       isLoading: false,
       error: null,
 
-      addPrompt: async (content: string) => {
+      addPrompt: async (content: string, extracted?: ExtractedData) => {
         set({ isLoading: true, error: null });
         try {
-          const extracted = await extractAllWithAI(content);
-          
+          const data = extracted || await extractAllWithAI(content);
+
           const newPrompt: Prompt = {
             schemaVersion: 2,
             id: generateUniqueId(),
-            title: extracted.title,
-            description: extracted.description,
+            title: data.title,
+            description: data.description,
             content,
-            metadata: extracted.metadata,
+            metadata: data.metadata,
             created: new Date().toISOString(),
             updated: new Date().toISOString(),
             usage_count: 0
