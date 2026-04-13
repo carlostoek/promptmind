@@ -42,17 +42,9 @@ function App() {
 
   const { toast, showToast, hideToast } = useToast();
 
-  // Check if Puter is loaded
+  // Load data from storage on mount
   useEffect(() => {
-    const checkPuter = () => {
-      // @ts-ignore
-      if (typeof puter !== 'undefined') {
-        loadFromStorage();
-      } else {
-        setTimeout(checkPuter, 500);
-      }
-    };
-    checkPuter();
+    loadFromStorage();
   }, [loadFromStorage]);
 
   // Derived state

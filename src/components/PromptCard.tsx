@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Prompt, PromptType } from '@/types';
 import { TYPE_COLORS, TYPE_ICONS } from '@/types';
-import { getConfidenceLevel } from '@/services/puterAI';
+import { getConfidenceLevel } from '@/services/openrouterAI';
 
 interface PromptCardProps {
   prompt: Prompt;

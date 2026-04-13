@@ -1,9 +1,12 @@
 // ============================================================================
-// PUTER AI SERVICE - Metadata Extraction
+// OPENROUTER AI SERVICE - Metadata Extraction
 // ============================================================================
 
 import type { PromptMetadata, ExtractedData } from '@/types';
 import { SUBTYPE_REGISTRY } from '@/types';
+import { env, validateEnv } from '@/config/env';
+
+const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // AI Cache for optimization
 const AI_CACHE = new Map<string, ExtractedData>();
@@ -33,7 +36,7 @@ function normalizeTags(tags: string[] | string): string[] {
 }
 
 function createFallbackMetadata(reason: string): PromptMetadata {
-  console.warn('[PuterAI] Using fallback metadata, reason:', reason);
+  console.warn('[OpenRouterAI] Using fallback metadata, reason:', reason);
   return {
     type: 'uncategorized',
     subtype: 'unknown',
@@ -50,7 +53,7 @@ function normalizeAIResponse(raw: string): Partial<ExtractedData> {
     const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     parsed = JSON.parse(cleaned);
   } catch (e) {
-    console.warn('[PuterAI] JSON parse failed:', e);
+    console.warn('[OpenRouterAI] JSON parse failed:', e);
     return {
       title: '',
       description: '',
@@ -125,13 +128,24 @@ function validateAndRepair(metadata: PromptMetadata): PromptMetadata {
 // ============================================================================
 
 export async function extractAllWithAI(content: string): Promise<ExtractedData> {
-  console.log('[PuterAI] Starting extraction for:', content.substring(0, 50) + '...');
+  console.log('[OpenRouterAI] Starting extraction for:', content.substring(0, 50) + '...');
 
   // Check cache first
   const cacheKey = hashContent(content);
   if (AI_CACHE.has(cacheKey)) {
-    console.log('[PuterAI] Cache hit');
+    console.log('[OpenRouterAI] Cache hit');
     return AI_CACHE.get(cacheKey)!;
+  }
+
+  // Validate environment
+  validateEnv();
+  if (!env.OPENROUTER_API_KEY) {
+    console.warn('[OpenRouterAI] No API key configured');
+    return {
+      title: content.substring(0, 50) + '...',
+      description: '',
+      metadata: createFallbackMetadata('no_api_key')
+    };
   }
 
   const systemPrompt = `You are a metadata extraction AI. Analyze this prompt and return ONLY valid JSON.
@@ -163,23 +177,41 @@ ${content}
 Remember: Return ONLY JSON, no other text.`;
 
   try {
-    // @ts-ignore - Puter is loaded globally
-    if (typeof puter === 'undefined' || !puter.ai?.chat) {
-      throw new Error('Puter AI not available');
+    console.log('[OpenRouterAI] Calling OpenRouter API...');
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'PromptMind AI'
+      },
+      body: JSON.stringify({
+        model: env.OPENROUTER_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: systemPrompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
-    console.log('[PuterAI] Calling Puter.AI...');
-    // @ts-ignore
-    const response = await puter.ai.chat(systemPrompt);
+    const data = await response.json();
+    const responseText = data.choices?.[0]?.message?.content || '';
 
-    const responseText = typeof response === 'object'
-      ? (response.message?.content || response.content || JSON.stringify(response))
-      : response;
-
-    console.log('[PuterAI] Response received:', responseText.substring(0, 200));
+    console.log('[OpenRouterAI] Response received:', responseText.substring(0, 200));
 
     const normalized = normalizeAIResponse(responseText);
-    
+
     const result: ExtractedData = {
       title: normalized.title || content.substring(0, 50) + '...',
       description: normalized.description || '',
@@ -188,11 +220,11 @@ Remember: Return ONLY JSON, no other text.`;
 
     // Cache the result
     AI_CACHE.set(cacheKey, result);
-    console.log('[PuterAI] Extraction successful:', result);
+    console.log('[OpenRouterAI] Extraction successful:', result);
 
     return result;
   } catch (e) {
-    console.error('[PuterAI] ERROR:', e);
+    console.error('[OpenRouterAI] ERROR:', e);
     return {
       title: content.substring(0, 50) + '...',
       description: '',

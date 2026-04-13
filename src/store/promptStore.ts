@@ -6,7 +6,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Prompt, SearchFilters, ScoredPrompt } from '@/types';
 import { TAG_SYNONYMS } from '@/types';
-import { extractAllWithAI, detectTypeFromContent } from '@/services/puterAI';
+import { extractAllWithAI, detectTypeFromContent } from '@/services/openrouterAI';
 
 interface PromptState {
   prompts: Prompt[];
@@ -139,15 +139,11 @@ export const usePromptStore = create<PromptState>()(
             isLoading: false
           }));
 
-          // Save to Puter.kv if available
+          // Save to localStorage as backup
           try {
-            // @ts-ignore
-            if (typeof puter !== 'undefined' && puter.kv?.set) {
-              // @ts-ignore
-              await puter.kv.set('prompts', JSON.stringify(get().prompts));
-            }
+            localStorage.setItem('promptmind-prompts', JSON.stringify(get().prompts));
           } catch (e) {
-            console.warn('Failed to save to Puter.kv:', e);
+            console.warn('Failed to save to localStorage:', e);
           }
         } catch (error) {
           set({ error: 'Failed to extract metadata', isLoading: false });
@@ -275,29 +271,21 @@ export const usePromptStore = create<PromptState>()(
 
       loadFromStorage: async () => {
         try {
-          // @ts-ignore
-          if (typeof puter !== 'undefined' && puter.kv?.get) {
-            // @ts-ignore
-            const stored = await puter.kv.get('prompts');
-            if (stored) {
-              const parsed = JSON.parse(stored).map(migrateLegacyPrompt);
-              set({ prompts: parsed });
-            }
+          const stored = localStorage.getItem('promptmind-prompts');
+          if (stored) {
+            const parsed = JSON.parse(stored).map(migrateLegacyPrompt);
+            set({ prompts: parsed });
           }
         } catch (e) {
-          console.warn('Failed to load from Puter.kv:', e);
+          console.warn('Failed to load from localStorage:', e);
         }
       },
 
       saveToStorage: async () => {
         try {
-          // @ts-ignore
-          if (typeof puter !== 'undefined' && puter.kv?.set) {
-            // @ts-ignore
-            await puter.kv.set('prompts', JSON.stringify(get().prompts));
-          }
+          localStorage.setItem('promptmind-prompts', JSON.stringify(get().prompts));
         } catch (e) {
-          console.warn('Failed to save to Puter.kv:', e);
+          console.warn('Failed to save to localStorage:', e);
         }
       },
 

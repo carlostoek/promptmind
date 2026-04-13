@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import type { Prompt, PromptType } from '@/types';
 import { SUBTYPE_REGISTRY } from '@/types';
-import { getConfidenceLevel } from '@/services/puterAI';
+import { getConfidenceLevel } from '@/services/openrouterAI';
 
 interface PromptModalProps {
   isOpen: boolean;
